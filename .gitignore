@@ -1,0 +1,23 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# Python generated files
+__pycache__/
+*.py[cod]
+*.bak
+
+# Virtual environments
+.venv/
+venv/
+
+# React generated files
+frontend/node_modules/
+frontend/dist/
+
+# IDE files
+.vscode/
+.idea/
