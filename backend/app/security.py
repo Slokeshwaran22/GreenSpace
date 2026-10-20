@@ -1,0 +1,249 @@
+
+import base64
+import hashlib
+import hmac
+import os
+import re
+import secrets
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from jose import JWTError, jwt
+
+
+# =========================================================
+# JWT CONFIGURATION
+# =========================================================
+
+JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+JWT_ALGORITHM = "HS256"
+
+# Normal login: 30 minutes
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Remember Me: 30 days
+REMEMBER_ME_EXPIRE_DAYS = 30
+
+if not JWT_SECRET_KEY:
+    raise RuntimeError(
+        "JWT_SECRET_KEY is missing. Set it in your backend environment."
+    )
+
+if len(JWT_SECRET_KEY) < 32:
+    raise RuntimeError(
+        "JWT_SECRET_KEY must be a strong secret of at least 32 characters."
+    )
+
+
+# =========================================================
+# EMAIL VALIDATION
+# =========================================================
+
+def normalize_email(email: str) -> str:
+    """Remove surrounding whitespace and normalize email case."""
+    return email.strip().lower()
+
+
+def is_valid_gmail(email: str) -> bool:
+    """Accept addresses ending in gmail.com."""
+    normalized_email = normalize_email(email)
+
+    return bool(
+        re.fullmatch(
+            r"[a-z0-9._+-]+@gmail\.com",
+            normalized_email,
+            re.IGNORECASE,
+        )
+    )
+
+
+# =========================================================
+# PASSWORD VALIDATION
+# =========================================================
+
+def validate_password(password: str) -> bool:
+    """
+    Require at least one uppercase letter, lowercase letter,
+    digit, and special character.
+    """
+    return (
+        re.search(r"[A-Z]", password) is not None
+        and re.search(r"[a-z]", password) is not None
+        and re.search(r"\d", password) is not None
+        and re.search(r"[^A-Za-z0-9]", password) is not None
+    )
+
+
+# =========================================================
+# PASSWORD HASHING
+# =========================================================
+
+def hash_password(password: str) -> str:
+    """
+    Hash a password using scrypt and a unique random salt.
+
+    Stored format:
+    scrypt$<base64 salt>$<base64 password hash>
+    """
+    salt = secrets.token_bytes(16)
+
+    password_hash = hashlib.scrypt(
+        password.encode("utf-8"),
+        salt=salt,
+        n=16384,
+        r=8,
+        p=1,
+        dklen=64,
+    )
+
+    return (
+        "scrypt$"
+        + base64.b64encode(salt).decode("ascii")
+        + "$"
+        + base64.b64encode(password_hash).decode("ascii")
+    )
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Verify a password against its stored scrypt hash."""
+    try:
+        algorithm, salt_text, hash_text = stored_hash.split("$")
+
+        if algorithm != "scrypt":
+            return False
+
+        salt = base64.b64decode(salt_text, validate=True)
+        expected_hash = base64.b64decode(hash_text, validate=True)
+
+        # Prevent malformed stored hashes from causing unexpected work.
+        if len(salt) != 16 or len(expected_hash) != 64:
+            return False
+
+        actual_hash = hashlib.scrypt(
+            password.encode("utf-8"),
+            salt=salt,
+            n=16384,
+            r=8,
+            p=1,
+            dklen=len(expected_hash),
+        )
+
+        return hmac.compare_digest(actual_hash, expected_hash)
+
+    except (ValueError, TypeError, UnicodeError):
+        return False
+
+
+# =========================================================
+# JWT TOKEN CREATION
+# =========================================================
+
+def create_access_token(
+    user_id: str | int,
+    remember_me: bool = False,
+) -> str:
+    """
+    Create a signed JWT.
+
+    Normal login:
+        Token expires in 30 minutes.
+
+    Remember Me:
+        Token expires in 30 days.
+    """
+    normalized_user_id = str(user_id)
+
+    if not normalized_user_id.isdigit() or int(normalized_user_id) <= 0:
+        raise ValueError("user_id must be a positive integer.")
+
+    if remember_me:
+        expires_delta = timedelta(days=REMEMBER_ME_EXPIRE_DAYS)
+    else:
+        expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    now = datetime.now(timezone.utc)
+    expires_at = now + expires_delta
+
+    payload: dict[str, Any] = {
+        "sub": normalized_user_id,
+        "iat": now,
+        "exp": expires_at,
+    }
+
+    return jwt.encode(
+        payload,
+        JWT_SECRET_KEY,
+        algorithm=JWT_ALGORITHM,
+    )
+
+
+# =========================================================
+# JWT TOKEN VERIFICATION
+# =========================================================
+
+def decode_access_token(token: str) -> dict[str, Any] | None:
+    """
+    Validate a JWT signature, expiration, user ID and timestamps.
+
+    Returns the decoded payload when valid, otherwise None.
+    """
+    if not isinstance(token, str) or not token:
+        return None
+
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM],
+        )
+
+        subject = payload.get("sub")
+
+        if not isinstance(subject, str) or not subject.isdigit():
+            return None
+
+        if int(subject) <= 0:
+            return None
+
+        issued_at = payload.get("iat")
+        expires_at = payload.get("exp")
+
+        if (
+            isinstance(issued_at, bool)
+            or not isinstance(issued_at, (int, float))
+        ):
+            return None
+
+        if (
+            isinstance(expires_at, bool)
+            or not isinstance(expires_at, (int, float))
+        ):
+            return None
+
+        if issued_at <= 0 or expires_at <= issued_at:
+            return None
+
+        # Reject tokens issued in the future.
+        current_timestamp = datetime.now(timezone.utc).timestamp()
+
+        if issued_at > current_timestamp:
+            return None
+
+        return payload
+
+    except (JWTError, TypeError, ValueError, AttributeError):
+        return None
+
+
+# =========================================================
+# GET USER ID FROM TOKEN
+# =========================================================
+
+def get_user_id_from_token(token: str) -> str | None:
+    """Return the user ID from a valid JWT, or None."""
+    payload = decode_access_token(token)
+
+    if payload is None:
+        return None
+
+    return payload["sub"]
