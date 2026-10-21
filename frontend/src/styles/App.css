@@ -1144,3 +1144,53 @@ body {
     transition: none;
   }
 }
+
+
+
+
+
+
+/* OTP buttons layout */
+.otp-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+/* Keep both buttons equal in size */
+.otp-buttons button {
+  width: 100%;
+  min-height: 46px;
+  margin: 0;
+  border-radius: 9px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease,
+              transform 0.2s ease;
+}
+
+/* Primary Verify OTP button */
+.otp-buttons .primary-button {
+  background: #187a43;
+  color: #ffffff;
+  border: 1px solid #187a43;
+}
+
+/* Secondary Back to Login button */
+.otp-buttons .secondary-button {
+  background: #ffffff;
+  color: #176b3a;
+  border: 1px solid #21834b;
+  box-shadow: none;
+}
+
+.otp-buttons .secondary-button:hover:not(:disabled) {
+  background: #e6f3e8;
+}
+
+.otp-buttons button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

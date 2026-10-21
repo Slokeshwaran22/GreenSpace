@@ -12,6 +12,7 @@ from app.routes.login import router as login_router
 from app.routes.password_reset import router as password_reset_router
 from app.routes.projects import router as projects_router
 from app.routes.admin import router as admin_router
+from app.routes.messages import router as messages_router
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 load_dotenv(BACKEND_DIR / ".env")
@@ -85,3 +86,4 @@ app.include_router(login_router)
 app.include_router(password_reset_router)
 app.include_router(projects_router)
 app.include_router(admin_router)
+app.include_router(messages_router)

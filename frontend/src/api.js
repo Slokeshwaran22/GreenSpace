@@ -1,3 +1,4 @@
+
 const API_URL = "http://localhost:8000";
 
 // Common function to send requests to FastAPI
@@ -38,6 +39,7 @@ async function request(path, options = {}) {
     throw new Error(message);
   }
 
+  // Return JSON data directly
   return data;
 }
 
@@ -50,8 +52,32 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  // Verify login OTP
+  verifyLoginOtp: (email, otp) =>
+    request("/login/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, otp }),
+    }),
+
   // Get logged-in user details
   me: () => request("/me"),
+
+  // Generic GET request
+  get: (path) => request(path),
+
+  // Generic POST request
+  post: (path, payload) =>
+    request(path, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // Generic PATCH request
+  patch: (path, payload) =>
+    request(path, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
 
   // Logout
   logout: () =>

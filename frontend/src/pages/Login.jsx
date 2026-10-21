@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -8,10 +7,36 @@ import { api } from "../api.js";
 
 export default function Login() {
   const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+
+  const [otpRequired, setOtpRequired] = useState(false);
+  const [otp, setOtp] = useState("");
+
   const [loading, setLoading] = useState(false);
+
+  function navigateByRole(user) {
+    if (!user || !user.role) {
+      toast.error("User role was not returned by the server.");
+      return;
+    }
+
+    toast.success("Login successful!");
+
+    // Clear fields after successful login
+    setEmail("");
+    setPassword("");
+    setOtp("");
+    setOtpRequired(false);
+
+    if (user.role.toLowerCase() === "admin") {
+      navigate("/admin/admindashboard", { replace: true });
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -21,71 +46,172 @@ export default function Login() {
       return;
     }
 
+    if (loading) return;
+
     setLoading(true);
+
     try {
-      await api.login({
+      const response = await api.login({
         email: email.trim(),
         password,
         remember_me: rememberMe,
       });
 
-      toast.success("Login successful!");
-      navigate("/dashboard", { replace: true });
+      // OTP required when Remember Me is unchecked
+      if (response.otp_required) {
+        setOtpRequired(true);
+        setOtp("");
+        toast.success("Login OTP sent to your registered Gmail.");
+        return;
+      }
+
+      // Direct login when Remember Me is checked
+      navigateByRole(response.user);
     } catch (error) {
-      toast.error(error.message || "Login failed.");
+      toast.error(error.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
+  async function handleVerifyOtp(event) {
+    event.preventDefault();
+
+    if (!/^\d{6}$/.test(otp)) {
+      toast.error("Please enter a valid six-digit OTP.");
+      return;
+    }
+
+    if (loading) return;
+
+    setLoading(true);
+
+    try {
+      const response = await api.verifyLoginOtp(
+        email.trim(),
+        otp
+      );
+
+      navigateByRole(response.user);
+    } catch (error) {
+      toast.error(
+        error.message || "OTP verification failed. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function backToLogin() {
+    setOtpRequired(false);
+    setOtp("");
+  }
+
   return (
     <AuthLayout
-      title="Welcome Back"
-      description="Login to your GreenSpace account"
+      title={otpRequired ? "Verify Your Email" : "Welcome Back"}
+      description={
+        otpRequired
+          ? "Enter the six-digit login OTP sent to your Gmail"
+          : "Login to your GreenSpace account"
+      }
     >
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="login-email">Email Address</label>
-          <input
-            id="login-email"
-            name="login-email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="Enter your email"
-            autoComplete="off"
-            required
+      {!otpRequired ? (
+        <form onSubmit={handleSubmit} autoComplete="off">
+          {/* Email */}
+          <div className="form-group">
+            <label htmlFor="login-email">Email Address</label>
+            <input
+              id="login-email"
+              name="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Enter your email"
+              autoComplete="off"
+              required
+            />
+          </div>
+
+          {/* Password */}
+          <PasswordField
+            name="login-password"
+            label="Password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="new-password"
           />
-        </div>
 
-        <PasswordField
-          name="login-password"
-          label="Password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
+          {/* Remember Me */}
+          <label>
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) =>
+                setRememberMe(event.target.checked)
+              }
+            />
+            Remember me
+          </label>
 
-        <label>
-          <input
-            type="checkbox"
-            checked={rememberMe}
-            onChange={(event) => setRememberMe(event.target.checked)}
-          />
-          Remember me
-        </label>
+          {/* Forgot Password */}
+          <div className="form-links">
+            <Link to="/forgot-password">Forgot password?</Link>
+          </div>
 
-        <div className="form-links">
-          <Link to="/forgot-password">Forgot password?</Link>
-        </div>
+          {/* Login */}
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? "Logging in..." : "Login"}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleVerifyOtp}>
+          <div className="form-group">
+            <label htmlFor="login-otp">Six-Digit OTP</label>
+            <input
+              id="login-otp"
+              name="otp"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              pattern="[0-9]{6}"
+              value={otp}
+              onChange={(event) =>
+                setOtp(
+                  event.target.value.replace(/\D/g, "").slice(0, 6)
+                )
+              }
+              placeholder="Enter OTP"
+              required
+            />
+          </div>
 
-        <button
-          className="primary-button"
-          type="submit"
-          disabled={loading}
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+          {/* OTP buttons with spacing */}
+          <div className="otp-buttons">
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Verifying..." : "Verify OTP"}
+            </button>
+
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={loading}
+              onClick={backToLogin}
+            >
+              Back to Login
+            </button>
+          </div>
+        </form>
+      )}
 
       <p className="auth-footer">
         Don't have an account? <Link to="/register">Register</Link>
