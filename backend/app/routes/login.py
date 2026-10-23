@@ -473,12 +473,15 @@ def get_current_user(request: Request):
         )
 
         user = cursor.fetchone()
+        print("tesstststst");
 
         if not user:
             raise HTTPException(
                 status_code=401,
                 detail="Session expired or invalid.",
             )
+
+        
 
         return {"user": public_user(user)}
 

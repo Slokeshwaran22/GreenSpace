@@ -46,7 +46,7 @@ def admin_dashboard(
         cursor.execute("""
             SELECT id, name, email, phone, role
             FROM users
-            ORDER BY id DESC
+            ORDER BY id ASC
         """)
         users = cursor.fetchall()
 
