@@ -1,10 +1,10 @@
-
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
+import UserDashboard from "./pages/UserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute";
@@ -33,6 +33,12 @@ export default function App() {
         <Route
           path="/dashboard"
           element={<Dashboard />}
+        />
+
+        {/* User Dashboard */}
+        <Route
+          path="/user/userdashboard"
+          element={<UserDashboard />}
         />
 
         {/* Admin Dashboard */}

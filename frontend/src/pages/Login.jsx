@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -17,27 +18,33 @@ export default function Login() {
 
   const [loading, setLoading] = useState(false);
 
+  // Navigate according to the user's role
   function navigateByRole(user) {
     if (!user || !user.role) {
       toast.error("User role was not returned by the server.");
       return;
     }
 
-    toast.success("Login successful!");
+    const role = String(user.role).trim().toLowerCase();
 
-    // Clear fields after successful login
+    // Clear login fields after successful authentication
     setEmail("");
     setPassword("");
     setOtp("");
     setOtpRequired(false);
 
-    if (user.role.toLowerCase() === "admin") {
+    if (role === "admin") {
+      toast.success("Admin login successful!");
       navigate("/admin/admindashboard", { replace: true });
+    } else if (role === "user") {
+      toast.success("User login successful!");
+      navigate("/user/userdashboard", { replace: true });
     } else {
-      navigate("/dashboard", { replace: true });
+      toast.error("Your account role is not recognized.");
     }
   }
 
+  // Login with email and password
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -57,7 +64,7 @@ export default function Login() {
         remember_me: rememberMe,
       });
 
-      // OTP required when Remember Me is unchecked
+      // OTP verification is required when Remember Me is unchecked
       if (response.otp_required) {
         setOtpRequired(true);
         setOtp("");
@@ -68,12 +75,15 @@ export default function Login() {
       // Direct login when Remember Me is checked
       navigateByRole(response.user);
     } catch (error) {
-      toast.error(error.message || "Login failed. Please try again.");
+      toast.error(
+        error.message || "Login failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   }
 
+  // Verify login OTP
   async function handleVerifyOtp(event) {
     event.preventDefault();
 
@@ -102,6 +112,7 @@ export default function Login() {
     }
   }
 
+  // Return to the login form
   function backToLogin() {
     setOtpRequired(false);
     setOtp("");
@@ -120,13 +131,18 @@ export default function Login() {
         <form onSubmit={handleSubmit} autoComplete="off">
           {/* Email */}
           <div className="form-group">
-            <label htmlFor="login-email">Email Address</label>
+            <label htmlFor="login-email">
+              Email Address
+            </label>
+
             <input
               id="login-email"
               name="email"
               type="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) =>
+                setEmail(event.target.value)
+              }
               placeholder="Enter your email"
               autoComplete="off"
               required
@@ -138,7 +154,9 @@ export default function Login() {
             name="login-password"
             label="Password"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event) =>
+              setPassword(event.target.value)
+            }
             autoComplete="new-password"
           />
 
@@ -156,10 +174,12 @@ export default function Login() {
 
           {/* Forgot Password */}
           <div className="form-links">
-            <Link to="/forgot-password">Forgot password?</Link>
+            <Link to="/forgot-password">
+              Forgot password?
+            </Link>
           </div>
 
-          {/* Login */}
+          {/* Login button */}
           <button
             className="primary-button"
             type="submit"
@@ -170,8 +190,12 @@ export default function Login() {
         </form>
       ) : (
         <form onSubmit={handleVerifyOtp}>
+          {/* OTP */}
           <div className="form-group">
-            <label htmlFor="login-otp">Six-Digit OTP</label>
+            <label htmlFor="login-otp">
+              Six-Digit OTP
+            </label>
+
             <input
               id="login-otp"
               name="otp"
@@ -183,7 +207,9 @@ export default function Login() {
               value={otp}
               onChange={(event) =>
                 setOtp(
-                  event.target.value.replace(/\D/g, "").slice(0, 6)
+                  event.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, 6)
                 )
               }
               placeholder="Enter OTP"
@@ -191,7 +217,7 @@ export default function Login() {
             />
           </div>
 
-          {/* OTP buttons with spacing */}
+          {/* OTP buttons */}
           <div className="otp-buttons">
             <button
               className="primary-button"
@@ -214,7 +240,8 @@ export default function Login() {
       )}
 
       <p className="auth-footer">
-        Don't have an account? <Link to="/register">Register</Link>
+        Don't have an account?{" "}
+        <Link to="/register">Register</Link>
       </p>
     </AuthLayout>
   );

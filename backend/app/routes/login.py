@@ -473,7 +473,7 @@ def get_current_user(request: Request):
         )
 
         user = cursor.fetchone()
-        print("tesstststst");
+      
 
         if not user:
             raise HTTPException(

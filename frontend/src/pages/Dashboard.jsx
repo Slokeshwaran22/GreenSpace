@@ -41,6 +41,7 @@ export default function Dashboard() {
     async function loadDashboard() {
       try {
         const result = await api.me();
+        console.log("User profile:", result);
 
         if (!active) return;
 
@@ -197,8 +198,13 @@ export default function Dashboard() {
     }
   }
 
+  // Loading state
   if (loading) {
-    return <p>Loading GreenSpace dashboard...</p>;
+    return (
+      <p className="dashboard-loading">
+        Loading GreenSpace dashboard...
+      </p>
+    );
   }
 
   if (!profile) {
@@ -210,274 +216,406 @@ export default function Dashboard() {
   ).length;
 
   return (
-    <main className="dashboard-page">
-      {/* Dashboard header */}
-      <header className="dashboard-header">
-        <div>
-          <h1>GreenSpace Dashboard</h1>
-          <p>Welcome, {profile.username}!</p>
-        </div>
+    <div className="gs-dashboard">
+      {/* Sidebar */}
+      <aside className="gs-sidebar">
+        <h2 className="gs-brand">🌿 GreenSpace</h2>
+
+        <nav
+          className="gs-navigation"
+          aria-label="Dashboard navigation"
+        >
+          <a className="gs-nav-link active" href="#profile">
+            👤 My Profile
+          </a>
+
+          <a className="gs-nav-link" href="#messages">
+            ✉️ Messages Inbox
+          </a>
+
+          <a className="gs-nav-link" href="#projects">
+            🌱 GreenSpace Projects
+          </a>
+        </nav>
 
         <button
-          className="secondary-button"
+          className="gs-logout"
           type="button"
           onClick={handleLogout}
         >
-          Logout
+          ↪ Logout
         </button>
-      </header>
+      </aside>
 
-      {/* Profile */}
-      <section className="dashboard-card">
-        <h2>My Profile</h2>
+      {/* Main content */}
+      <main className="gs-main">
+        {/* Dashboard header */}
+        <header className="gs-header">
+          <div>
+            <p className="gs-eyebrow">GREENSPACE / DASHBOARD</p>
 
-        <p>
-          <strong>Name:</strong> {profile.username}
-        </p>
+            <h1>Welcome, {profile.username}!</h1>
 
-        <p>
-          <strong>Email:</strong> {profile.email}
-        </p>
+            <p className="gs-subtitle">
+              Manage your account and stay connected.
+            </p>
+          </div>
 
-        <p>
-          <strong>Phone:</strong>{" "}
-          {profile.phone || "Not provided"}
-        </p>
+          <div className="gs-admin-label">
+            <div className="gs-avatar">
+              {profile.username?.charAt(0)?.toUpperCase() || "U"}
+            </div>
 
-        <p>
-          <strong>Role:</strong>{" "}
-          {isAdmin ? "Admin" : "User"}
-        </p>
+            <div>
+              <strong>{profile.username}</strong>
+              <small>{isAdmin ? "Administrator" : "User account"}</small>
+            </div>
+          </div>
+        </header>
 
-        <button
-          className="primary-button"
-          type="button"
-          onClick={handleCheckRole}
-        >
-          Check Role
-        </button>
-      </section>
+        {/* Statistic cards */}
+        <section className="gs-stat-grid">
+          <article className="gs-stat-card">
+            <div className="gs-stat-icon">👤</div>
+            <div>
+              <p>Account Status</p>
+              <h2>Active</h2>
+            </div>
+          </article>
 
-      {/* Messages Inbox */}
-      <section className="dashboard-card" id="messages">
-        <h2>Messages Inbox</h2>
+          <article className="gs-stat-card">
+            <div className="gs-stat-icon">✉️</div>
+            <div>
+              <p>Unread Messages</p>
+              <h2>{unreadCount}</h2>
+            </div>
+          </article>
 
-        <p>
-          Messages from the GreenSpace administration team.
-        </p>
+          <article className="gs-stat-card">
+            <div className="gs-stat-icon">🌱</div>
+            <div>
+              <p>GreenSpace Projects</p>
+              <h2>{projects.length}</h2>
+            </div>
+          </article>
+        </section>
 
-        <p>
-          <strong>Unread messages:</strong> {unreadCount}
-        </p>
+        {/* Profile */}
+        <section className="gs-panel" id="profile">
+          <div className="gs-panel-header">
+            <div>
+              <h2>My Profile</h2>
+              <p>Your registered account information.</p>
+            </div>
 
-        {messagesError && (
-          <p role="alert">
-            {messagesError}
+            <span className="gs-count">
+              {isAdmin ? "Admin" : "User"}
+            </span>
+          </div>
+
+          <div className="gs-profile-details">
+            <div className="gs-profile-row">
+              <span className="gs-detail-icon">👤</span>
+              <div>
+                <small>Name</small>
+                <strong>{profile.username}</strong>
+              </div>
+            </div>
+
+            <div className="gs-profile-row">
+              <span className="gs-detail-icon">✉️</span>
+              <div>
+                <small>Email</small>
+                <strong>{profile.email}</strong>
+              </div>
+            </div>
+
+            <div className="gs-profile-row">
+              <span className="gs-detail-icon">📱</span>
+              <div>
+                <small>Phone</small>
+                <strong>{profile.phone || "Not provided"}</strong>
+              </div>
+            </div>
+
+            <div className="gs-profile-row">
+              <span className="gs-detail-icon">🛡️</span>
+              <div>
+                <small>Role</small>
+                <strong>{isAdmin ? "Admin" : "User"}</strong>
+              </div>
+            </div>
+          </div>
+
+          <button
+            className="gs-action-button gs-primary-button"
+            type="button"
+            onClick={handleCheckRole}
+          >
+            🛡️ Check Role
+          </button>
+        </section>
+
+        {/* Messages Inbox */}
+        <section className="gs-panel" id="messages">
+          <div className="gs-panel-header">
+            <div>
+              <h2>Messages Inbox</h2>
+              <p>
+                Messages from the GreenSpace administration team.
+              </p>
+            </div>
+
+            <span className="gs-count">
+              {unreadCount} unread
+            </span>
+          </div>
+
+          <p className="gs-section-description">
+            You have {unreadCount} unread message(s).
           </p>
-        )}
 
-        {!messagesError && messages.length === 0 && (
-          <p>No messages received yet.</p>
-        )}
+          {messagesError && (
+            <p className="gs-error-message" role="alert">
+              {messagesError}
+            </p>
+          )}
 
-        {messages.length > 0 && (
-          <div className="projects-list">
-            {messages.map((message) => (
-              <article
-                className="dashboard-card"
-                key={message.id}
-              >
-                <p>
-                  <strong>
-                    {message.message_type === "announcement"
-                      ? "📢 Announcement"
-                      : "✉️ General Message"}
-                  </strong>
+          {!messagesError && messages.length === 0 && (
+            <p className="gs-empty">
+              No messages received yet.
+            </p>
+          )}
 
-                  {" · "}
+          {messages.length > 0 && (
+            <div className="gs-sent-messages">
+              {messages.map((message) => (
+                <article
+                  className="gs-message-card"
+                  key={message.id}
+                >
+                  <div className="gs-message-top">
+                    <span className="gs-message-type">
+                      {message.message_type === "announcement"
+                        ? "📢 Announcement"
+                        : "✉️ General Message"}
+                    </span>
 
-                  {message.is_read ? "Read" : "Unread"}
-                </p>
+                    <span
+                      className={
+                        message.is_read
+                          ? "gs-message-status read"
+                          : "gs-message-status unread"
+                      }
+                    >
+                      {message.is_read ? "Read" : "Unread"}
+                    </span>
+                  </div>
 
-                <h3>{message.title}</h3>
+                  <h3>{message.title}</h3>
 
-                <p>{message.body}</p>
+                  <p className="gs-message-content">
+                    {message.body}
+                  </p>
 
-                <p>
-                  <strong>From:</strong>{" "}
-                  {message.sender_name || "GreenSpace Admin"}
-                </p>
+                  <p>
+                    <strong>From:</strong>{" "}
+                    {message.sender_name || "GreenSpace Admin"}
+                  </p>
 
-                <p>
-                  <strong>Received:</strong>{" "}
-                  {message.created_at
-                    ? new Date(
-                        message.created_at
-                      ).toLocaleString()
-                    : "Date unavailable"}
-                </p>
+                  <p>
+                    <strong>Received:</strong>{" "}
+                    {message.created_at
+                      ? new Date(
+                          message.created_at
+                        ).toLocaleString()
+                      : "Date unavailable"}
+                  </p>
 
-                {!message.is_read && (
+                  {!message.is_read && (
+                    <button
+                      className="gs-action-button gs-primary-button"
+                      type="button"
+                      disabled={
+                        updatingMessageId === message.id
+                      }
+                      onClick={() =>
+                        handleMarkAsRead(message.id)
+                      }
+                    >
+                      {updatingMessageId === message.id
+                        ? "Updating..."
+                        : "Mark as Read"}
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* GreenSpace Projects */}
+        <section className="gs-panel" id="projects">
+          <div className="gs-panel-header">
+            <div>
+              <h2>GreenSpace Projects</h2>
+              <p>Explore the available GreenSpace projects.</p>
+            </div>
+
+            <span className="gs-count">
+              {projects.length} projects
+            </span>
+          </div>
+
+          {/* Admin project form */}
+          {isAdmin && (
+            <form
+              className="gs-project-form"
+              onSubmit={handleSave}
+            >
+              <div className="gs-form-group">
+                <label htmlFor="project-name">
+                  Project name
+                </label>
+
+                <input
+                  id="project-name"
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      name: event.target.value,
+                    })
+                  }
+                  maxLength={150}
+                  required
+                />
+              </div>
+
+              <div className="gs-form-group">
+                <label htmlFor="project-description">
+                  Description
+                </label>
+
+                <textarea
+                  id="project-description"
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      description: event.target.value,
+                    })
+                  }
+                  maxLength={5000}
+                />
+              </div>
+
+              <div className="gs-form-group">
+                <label htmlFor="project-location">
+                  Location
+                </label>
+
+                <input
+                  id="project-location"
+                  value={form.location}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      location: event.target.value,
+                    })
+                  }
+                  maxLength={200}
+                />
+              </div>
+
+              <div className="gs-form-actions">
+                <button
+                  className="gs-action-button gs-primary-button"
+                  type="submit"
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : editingId !== null
+                      ? "Update Project"
+                      : "Create Project"}
+                </button>
+
+                {editingId !== null && (
                   <button
-                    className="primary-button"
+                    className="gs-action-button gs-secondary-button"
                     type="button"
-                    disabled={
-                      updatingMessageId === message.id
-                    }
-                    onClick={() =>
-                      handleMarkAsRead(message.id)
-                    }
+                    onClick={() => {
+                      setEditingId(null);
+                      setForm(emptyProject);
+                    }}
                   >
-                    {updatingMessageId === message.id
-                      ? "Updating..."
-                      : "Mark as Read"}
+                    Cancel Edit
                   </button>
                 )}
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+              </div>
+            </form>
+          )}
 
-      {/* GreenSpace Projects */}
-      <section className="dashboard-card">
-        <h2>GreenSpace Projects</h2>
+          {!isAdmin && (
+            <p className="gs-section-description">
+              You can view projects. Admin access is required
+              to make changes.
+            </p>
+          )}
 
-        {isAdmin && (
-          <form onSubmit={handleSave}>
-            <div className="form-group">
-              <label htmlFor="project-name">
-                Project name
-              </label>
-
-              <input
-                id="project-name"
-                value={form.name}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    name: event.target.value,
-                  })
-                }
-                maxLength={150}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="project-description">
-                Description
-              </label>
-
-              <textarea
-                id="project-description"
-                value={form.description}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    description: event.target.value,
-                  })
-                }
-                maxLength={5000}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="project-location">
-                Location
-              </label>
-
-              <input
-                id="project-location"
-                value={form.location}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    location: event.target.value,
-                  })
-                }
-                maxLength={200}
-              />
-            </div>
-
-            <button
-              className="primary-button"
-              type="submit"
-              disabled={saving}
-            >
-              {saving
-                ? "Saving..."
-                : editingId !== null
-                  ? "Update Project"
-                  : "Create Project"}
-            </button>
-
-            {editingId !== null && (
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => {
-                  setEditingId(null);
-                  setForm(emptyProject);
-                }}
-              >
-                Cancel Edit
-              </button>
-            )}
-          </form>
-        )}
-
-        {!isAdmin && (
-          <p>
-            You can view projects. Admin access is required to
-            make changes.
-          </p>
-        )}
-
-        {projects.length === 0 ? (
-          <p>No projects found.</p>
-        ) : (
-          <div className="projects-list">
-            {projects.map((project) => (
-              <article
-                className="dashboard-card"
-                key={project.id}
-              >
-                <h3>{project.name}</h3>
-
-                <p>
-                  {project.description || "No description"}
-                </p>
-
-                <p>
-                  <strong>Location:</strong>{" "}
-                  {project.location || "Not specified"}
-                </p>
-
-                {isAdmin && (
-                  <div className="dashboard-actions">
-                    <button
-                      className="primary-button"
-                      type="button"
-                      onClick={() => handleEdit(project)}
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      className="secondary-button"
-                      type="button"
-                      onClick={() => handleDelete(project.id)}
-                    >
-                      Delete
-                    </button>
+          {projects.length === 0 ? (
+            <p className="gs-empty">No projects found.</p>
+          ) : (
+            <div className="gs-sent-messages">
+              {projects.map((project) => (
+                <article
+                  className="gs-project-card"
+                  key={project.id}
+                >
+                  <div className="gs-project-heading">
+                    <span className="gs-project-icon">🌱</span>
+                    <h3>{project.name}</h3>
                   </div>
-                )}
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-    </main>
+
+                  <p>
+                    {project.description || "No description"}
+                  </p>
+
+                  <p>
+                    <strong>Location:</strong>{" "}
+                    {project.location || "Not specified"}
+                  </p>
+
+                  {isAdmin && (
+                    <div className="gs-dashboard-actions">
+                      <button
+                        className="gs-action-button gs-primary-button"
+                        type="button"
+                        onClick={() => handleEdit(project)}
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        className="gs-action-button gs-secondary-button"
+                        type="button"
+                        onClick={() => handleDelete(project.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <footer className="gs-footer">
+          🌿 GreenSpace · Account Dashboard
+        </footer>
+      </main>
+    </div>
   );
 }

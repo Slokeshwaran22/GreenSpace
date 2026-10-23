@@ -1,11 +1,22 @@
-
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import "../styles/Dashboard.css";
+import FileManagement from "../components/FileManagement.jsx";
+import ProfileEditor from "../components/ProfileEditor.jsx";
+import "../styles/AdminDashboard.css";
+
+const API_URL = "http://localhost:8000";
 
 export default function AdminDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [error, setError] = useState("");
+
+  // Excel import states
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [excelFile, setExcelFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState("");
+  const [importError, setImportError] = useState(false);
+  const [importSummary, setImportSummary] = useState(null);
 
   // Message form states
   const [recipientId, setRecipientId] = useState("all");
@@ -21,13 +32,12 @@ export default function AdminDashboard() {
   const [messagesLoading, setMessagesLoading] = useState(true);
   const [messagesError, setMessagesError] = useState("");
 
-  // Load sent messages from the backend
+  // Load sent messages
   async function fetchSentMessages() {
     setMessagesLoading(true);
 
     try {
       const response = await api.get("/admin/messages");
-
       setSentMessages(response.messages || []);
       setMessagesError("");
     } catch (err) {
@@ -39,12 +49,13 @@ export default function AdminDashboard() {
     }
   }
 
-  // Load admin dashboard and sent messages
+  // Load dashboard and sent messages
   useEffect(() => {
     async function fetchDashboard() {
       try {
         const response = await api.get("/admin/admindashboard");
         setDashboard(response);
+        setError("");
       } catch (err) {
         setError(
           err.message || "Unable to load admin dashboard."
@@ -56,7 +67,174 @@ export default function AdminDashboard() {
     fetchSentMessages();
   }, []);
 
-  // Send message to one user or all users
+  // Open Excel import popup
+  function openImportModal() {
+    setShowImportModal(true);
+    setExcelFile(null);
+    setImportStatus("");
+    setImportError(false);
+    setImportSummary(null);
+  }
+
+  // Close popup and reset form
+  function closeImportModal() {
+    if (importing) return;
+
+    setShowImportModal(false);
+    setExcelFile(null);
+    setImportStatus("");
+    setImportError(false);
+    setImportSummary(null);
+  }
+
+  // Import users from Excel
+  async function handleExcelImport(event) {
+    event.preventDefault();
+
+    if (importing) return;
+
+    if (!excelFile) {
+      setImportError(true);
+      setImportStatus("Please select an Excel (.xlsx) file.");
+      return;
+    }
+
+    if (!excelFile.name.toLowerCase().endsWith(".xlsx")) {
+      setImportError(true);
+      setImportStatus("Only .xlsx Excel files are supported.");
+      return;
+    }
+
+    if (excelFile.size > 5 * 1024 * 1024) {
+      setImportError(true);
+      setImportStatus("The file must be 5 MB or smaller.");
+      return;
+    }
+
+    setImporting(true);
+    setImportStatus("");
+    setImportError(false);
+    setImportSummary(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", excelFile);
+
+      const response = await fetch(
+        `${API_URL}/admin/users/import-excel`,
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        let errorMessage = "Excel import failed.";
+
+        try {
+          const errorData = await response.json();
+
+          if (typeof errorData.detail === "string") {
+            errorMessage = errorData.detail;
+          } else if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail
+              .map((item) => item.msg || "Invalid request")
+              .join(", ");
+          }
+        } catch {
+          // Keep default error message.
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          errorMessage =
+            "Admin authentication failed. Please log in as an admin.";
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      const totalRows = Number(
+        response.headers.get("X-Total-Rows") || 0
+      );
+
+      const usersCreated = Number(
+        response.headers.get("X-Users-Created") || 0
+      );
+
+      const usersFailed = Number(
+        response.headers.get("X-Users-Failed") || 0
+      );
+
+      setImportSummary({
+        totalRows,
+        usersCreated,
+        usersFailed,
+      });
+
+      // Download import result workbook
+      const resultBlob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(resultBlob);
+      const downloadLink = document.createElement("a");
+
+      downloadLink.href = downloadUrl;
+      downloadLink.download = "GreenSpace_Import_Results.xlsx";
+
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+
+      window.setTimeout(() => {
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 1000);
+
+      setImportError(usersFailed > 0);
+
+      if (usersFailed === 0) {
+        setImportStatus(
+          `Import completed successfully! ${usersCreated} user(s) created. Results Excel downloaded.`
+        );
+      } else if (usersCreated === 0) {
+        setImportStatus(
+          `Import processed ${totalRows} row(s), but no users were created. Check the downloaded results Excel for the reasons.`
+        );
+      } else {
+        setImportStatus(
+          `Import completed with some failures. ${usersCreated} user(s) created and ${usersFailed} row(s) failed. Check the downloaded results Excel.`
+        );
+      }
+
+      // Refresh dashboard after import
+      try {
+        const updatedDashboard = await api.get(
+          "/admin/admindashboard"
+        );
+        setDashboard(updatedDashboard);
+      } catch (refreshError) {
+        console.error(
+          "Unable to refresh dashboard:",
+          refreshError
+        );
+      }
+
+      setExcelFile(null);
+
+      const fileInput = document.getElementById("gs-excel-file");
+
+      if (fileInput) {
+        fileInput.value = "";
+      }
+    } catch (err) {
+      setImportError(true);
+      setImportStatus(
+        err.message || "Unable to import Excel file."
+      );
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  // Send a message to one user or all regular users
   async function handleSendMessage(event) {
     event.preventDefault();
 
@@ -81,22 +259,17 @@ export default function AdminDashboard() {
         body: messageBody.trim(),
       };
 
-      const result = await api.post(
-        "/admin/messages",
-        payload
-      );
+      const result = await api.post("/admin/messages", payload);
 
       setSendStatus(
         `${result.message} Recipients: ${result.recipient_count}`
       );
 
-      // Clear form only after successful sending
       setMessageTitle("");
       setMessageBody("");
       setRecipientId("all");
       setMessageType("general");
 
-      // Refresh the saved messages list
       await fetchSentMessages();
     } catch (err) {
       setSendError(true);
@@ -119,6 +292,7 @@ export default function AdminDashboard() {
     }
   }
 
+  // Loading and error states
   if (error) {
     return (
       <div className="dashboard-error">
@@ -154,8 +328,23 @@ export default function AdminDashboard() {
             🏠 Dashboard
           </a>
 
+          <a className="gs-nav-link" href="#admin-profile">
+            👤 My Profile
+          </a>
+
           <a className="gs-nav-link" href="#users">
             👥 Users
+          </a>
+
+          <a
+            className="gs-nav-link"
+            href="#users"
+            onClick={(event) => {
+              event.preventDefault();
+              openImportModal();
+            }}
+          >
+            📊 Import Users
           </a>
 
           <a className="gs-nav-link" href="#messages">
@@ -168,6 +357,10 @@ export default function AdminDashboard() {
 
           <a className="gs-nav-link" href="#activities">
             ◷ Activities
+          </a>
+
+          <a className="gs-nav-link" href="#file-management">
+            📁 File Management
           </a>
         </nav>
 
@@ -206,11 +399,15 @@ export default function AdminDashboard() {
           </div>
         </header>
 
+        {/* Admin Profile Editor */}
+        <section id="admin-profile" className="gs-panel">
+          <ProfileEditor />
+        </section>
+
         {/* Statistics */}
         <section className="gs-stat-grid">
           <article className="gs-stat-card">
             <span className="gs-stat-icon">👥</span>
-
             <div>
               <p>Total Registered Users</p>
               <h2>
@@ -221,7 +418,6 @@ export default function AdminDashboard() {
 
           <article className="gs-stat-card">
             <span className="gs-stat-icon">🟢</span>
-
             <div>
               <p>Currently Logged In</p>
               <h2>{dashboard.currently_logged_in ?? 0}</h2>
@@ -230,7 +426,6 @@ export default function AdminDashboard() {
 
           <article className="gs-stat-card">
             <span className="gs-stat-icon">📩</span>
-
             <div>
               <p>Sent Messages</p>
               <h2>{sentMessages.length}</h2>
@@ -246,9 +441,19 @@ export default function AdminDashboard() {
               <p>Accounts registered on GreenSpace</p>
             </div>
 
-            <span className="gs-count">
-              {users.length} users
-            </span>
+            <div className="gs-user-actions">
+              <span className="gs-count">
+                {users.length} users
+              </span>
+
+              <button
+                type="button"
+                className="gs-import-button"
+                onClick={openImportModal}
+              >
+                ☁ Import
+              </button>
+            </div>
           </div>
 
           {users.length === 0 ? (
@@ -272,17 +477,14 @@ export default function AdminDashboard() {
                   {users.map((user) => (
                     <tr key={user.id}>
                       <td>{user.id}</td>
-                      <td className="gs-user-name">
-                        {user.name}
-                      </td>
+                      <td className="gs-user-name">{user.name}</td>
                       <td>{user.email}</td>
                       <td>{user.phone || "—"}</td>
                       <td>
                         <span
                           className={`gs-role ${
-                            String(user.role)
-                              .trim()
-                              .toLowerCase() === "admin"
+                            String(user.role).trim().toLowerCase() ===
+                            "admin"
                               ? "gs-role-admin"
                               : "gs-role-user"
                           }`}
@@ -298,7 +500,146 @@ export default function AdminDashboard() {
           )}
         </section>
 
-        {/* Admin messaging form */}
+        {/* Excel import modal */}
+        {showImportModal && (
+          <div
+            className="gs-modal-overlay"
+            onMouseDown={(event) => {
+              if (
+                event.target === event.currentTarget &&
+                !importing
+              ) {
+                closeImportModal();
+              }
+            }}
+          >
+            <div
+              className="gs-import-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="gs-import-title"
+            >
+              <div className="gs-import-modal-header">
+                <div className="gs-import-modal-title">
+                  <span className="gs-import-modal-icon">☁</span>
+                  <h2 id="gs-import-title">
+                    Import User Session
+                  </h2>
+                </div>
+
+                <button
+                  type="button"
+                  className="gs-modal-close"
+                  onClick={closeImportModal}
+                  disabled={importing}
+                  aria-label="Close popup"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="gs-import-modal-body">
+                <p>
+                  Upload an Excel file (.xlsx) to import multiple
+                  users into GreenSpace.
+                </p>
+
+                <form onSubmit={handleExcelImport}>
+                  <div className="gs-form-group">
+                    <label htmlFor="gs-excel-file">
+                      Select Excel File (.xlsx) *
+                    </label>
+
+                    <input
+                      id="gs-excel-file"
+                      type="file"
+                      accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      onChange={(event) => {
+                        setExcelFile(
+                          event.target.files?.[0] || null
+                        );
+                        setImportStatus("");
+                        setImportError(false);
+                        setImportSummary(null);
+                      }}
+                      disabled={importing}
+                      required
+                    />
+
+                    <small>
+                      Only .xlsx files are supported. Maximum size:
+                      5 MB.
+                    </small>
+                  </div>
+
+                  <div className="gs-import-info">
+                    <strong>ⓘ Excel file format</strong>
+                    <p>Use these column headers:</p>
+                    <code>
+                      username, email, phone, password
+                    </code>
+                  </div>
+
+                  {importStatus && (
+                    <p
+                      role="status"
+                      aria-live="polite"
+                      className={
+                        importError
+                          ? "gs-import-status error"
+                          : "gs-import-status success"
+                      }
+                    >
+                      {importStatus}
+                    </p>
+                  )}
+
+                  {importSummary && (
+                    <div className="gs-import-summary">
+                      <div>
+                        <span>Total rows</span>
+                        <strong>{importSummary.totalRows}</strong>
+                      </div>
+
+                      <div>
+                        <span>Created</span>
+                        <strong>{importSummary.usersCreated}</strong>
+                      </div>
+
+                      <div>
+                        <span>Failed</span>
+                        <strong>{importSummary.usersFailed}</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="gs-import-modal-footer">
+                    <button
+                      type="button"
+                      className="gs-modal-cancel"
+                      onClick={closeImportModal}
+                      disabled={importing}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="gs-import-button"
+                      disabled={importing || !excelFile}
+                    >
+                      {importing
+                        ? "Importing..."
+                        : "☁ Import Session"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Send messages */}
         <section className="gs-panel" id="messages">
           <div className="gs-panel-header">
             <div>
@@ -314,11 +655,8 @@ export default function AdminDashboard() {
             onSubmit={handleSendMessage}
             className="gs-message-form"
           >
-            {/* Recipient */}
             <div className="gs-form-group">
-              <label htmlFor="message-recipient">
-                Recipient
-              </label>
+              <label htmlFor="message-recipient">Recipient</label>
 
               <select
                 id="message-recipient"
@@ -328,26 +666,18 @@ export default function AdminDashboard() {
                 }
                 required
               >
-                <option value="all">
-                  All regular users
-                </option>
+                <option value="all">All regular users</option>
 
                 {regularUsers.map((user) => (
-                  <option
-                    key={user.id}
-                    value={String(user.id)}
-                  >
+                  <option key={user.id} value={String(user.id)}>
                     {user.name} — {user.email}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Message type */}
             <div className="gs-form-group">
-              <label htmlFor="message-type">
-                Message Type
-              </label>
+              <label htmlFor="message-type">Message Type</label>
 
               <select
                 id="message-type"
@@ -357,21 +687,13 @@ export default function AdminDashboard() {
                 }
                 required
               >
-                <option value="general">
-                  General Message
-                </option>
-
-                <option value="announcement">
-                  Announcement
-                </option>
+                <option value="general">General Message</option>
+                <option value="announcement">Announcement</option>
               </select>
             </div>
 
-            {/* Title */}
             <div className="gs-form-group">
-              <label htmlFor="message-title">
-                Title
-              </label>
+              <label htmlFor="message-title">Title</label>
 
               <input
                 id="message-title"
@@ -386,11 +708,8 @@ export default function AdminDashboard() {
               />
             </div>
 
-            {/* Message body */}
             <div className="gs-form-group">
-              <label htmlFor="message-body">
-                Message
-              </label>
+              <label htmlFor="message-body">Message</label>
 
               <textarea
                 id="message-body"
@@ -405,7 +724,6 @@ export default function AdminDashboard() {
               />
             </div>
 
-            {/* Success or error message */}
             {sendStatus && (
               <p
                 role="status"
@@ -433,9 +751,7 @@ export default function AdminDashboard() {
           <div className="gs-panel-header">
             <div>
               <h2>Sent Messages</h2>
-              <p>
-                Messages sent by the administrator
-              </p>
+              <p>Messages sent by the administrator</p>
             </div>
 
             <span className="gs-count">
@@ -444,9 +760,7 @@ export default function AdminDashboard() {
           </div>
 
           {messagesLoading ? (
-            <p className="gs-empty">
-              Loading sent messages...
-            </p>
+            <p className="gs-empty">Loading sent messages...</p>
           ) : messagesError ? (
             <div>
               <p className="gs-empty" role="alert">
@@ -462,9 +776,7 @@ export default function AdminDashboard() {
               </button>
             </div>
           ) : sentMessages.length === 0 ? (
-            <p className="gs-empty">
-              No messages sent yet.
-            </p>
+            <p className="gs-empty">No messages sent yet.</p>
           ) : (
             <div className="gs-sent-messages">
               {sentMessages.map((message) => (
@@ -490,8 +802,7 @@ export default function AdminDashboard() {
                     Recipients:{" "}
                     {message.recipient_id === null
                       ? "All regular users"
-                      : message.recipient_names ||
-                        "Selected user"}
+                      : message.recipient_names || "Selected user"}
                     {" · "}
                     {message.recipient_count} user(s)
                   </p>
@@ -506,17 +817,20 @@ export default function AdminDashboard() {
           <div className="gs-panel-header">
             <div>
               <h2>Recent Activities</h2>
-              <p>
-                User activity history
-              </p>
+              <p>User activity history</p>
             </div>
           </div>
 
           <p className="gs-empty">
-            Activity history is not connected yet.
-            Login/logout events need to be recorded by the
-            backend before they can appear here.
+            Activity history is not connected yet. Login/logout
+            events need to be recorded by the backend before they
+            can appear here.
           </p>
+        </section>
+
+        {/* File Management */}
+        <section className="gs-panel" id="file-management">
+          <FileManagement />
         </section>
 
         {/* Footer */}
