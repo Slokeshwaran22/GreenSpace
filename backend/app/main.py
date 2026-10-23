@@ -15,6 +15,7 @@ from app.routes.admin import router as admin_router
 from app.routes.messages import router as messages_router
 from app.routes.user import router as user_router
 from app.routes.files import router as files_router
+from app.routes.profile import router as profile_router
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 load_dotenv(BACKEND_DIR / ".env")
@@ -91,3 +92,4 @@ app.include_router(admin_router)
 app.include_router(messages_router)
 app.include_router(user_router)
 app.include_router(files_router)
+app.include_router(profile_router)
