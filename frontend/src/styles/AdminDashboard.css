@@ -1479,3 +1479,340 @@
     transition: none;
   }
 }
+
+/* ==========================================
+   EXCEL TEMPLATE DOWNLOAD
+   GreenSpace Professional Import Popup
+========================================== */
+
+.gs-template-download {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid #d7eadd;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #f4fbf6, #ffffff);
+}
+
+.gs-template-details {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.gs-template-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #e2f4e8;
+  font-size: 23px;
+}
+
+.gs-template-details strong,
+.gs-template-details small {
+  display: block;
+}
+
+.gs-template-details strong {
+  margin-bottom: 5px;
+  color: #183c2d;
+  font-size: 14px;
+}
+
+.gs-template-details small {
+  color: #718078;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.gs-template-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 43px;
+  padding: 11px 16px;
+  border: 1px solid #198754;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #126b42;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.gs-template-button:hover {
+  background: #e9f7ee;
+  transform: translateY(-1px);
+}
+
+.gs-template-button:focus-visible {
+  outline: 3px solid rgba(25, 135, 84, 0.25);
+  outline-offset: 3px;
+}
+
+/* Professional Excel file chooser */
+
+.gs-import-modal .gs-excel-file-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100px;
+  padding: 18px;
+  border: 2px dashed #b8d9c2;
+  border-radius: 12px;
+  background: #f7fbf8;
+  color: #475569;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.gs-import-modal .gs-excel-file-input:hover:not(:disabled) {
+  border-color: #198754;
+  background: #eff9f2;
+}
+
+.gs-import-modal .gs-excel-file-input:focus-visible {
+  outline: 3px solid rgba(25, 135, 84, 0.2);
+  outline-offset: 3px;
+}
+
+.gs-import-modal .gs-excel-file-input::file-selector-button {
+  margin-right: 12px;
+  padding: 9px 13px;
+  border: none;
+  border-radius: 7px;
+  background: #198754;
+  color: #ffffff;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gs-import-modal .gs-excel-file-input::file-selector-button:hover {
+  background: #126b42;
+}
+
+.gs-import-modal .gs-selected-file {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  color: #126b42;
+  font-weight: 600;
+}
+
+@media (max-width: 520px) {
+  .gs-template-download {
+    padding: 14px;
+  }
+
+  .gs-template-button {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+/* ==========================================
+   EXCEL IMPORT MODAL - UPDATED DROPZONE
+   Append to the end of AdminDashboard.css
+========================================== */
+
+.gs-template-button-single {
+  width: fit-content;
+  min-width: 190px;
+  margin: 0 0 24px;
+  box-sizing: border-box;
+}
+
+.gs-import-modal .gs-excel-upload-group {
+  margin: 0;
+}
+
+.gs-import-modal .gs-excel-upload-group > label {
+  display: block;
+  margin-bottom: 11px;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.gs-excel-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 205px;
+  padding: 22px 16px;
+  border: 2px dashed #c9d9ce;
+  border-radius: 12px;
+  background: #fbfdfb;
+  text-align: center;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.gs-excel-dropzone.is-dragging,
+.gs-excel-dropzone:hover {
+  border-color: #198754;
+  background: #f0faf3;
+}
+
+.gs-excel-dropzone.is-dragging {
+  box-shadow: 0 0 0 4px rgba(25, 135, 84, 0.08);
+}
+
+.gs-excel-dropzone.has-file {
+  border-color: #198754;
+  background: #f4fbf6;
+}
+
+.gs-excel-upload-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 47px;
+  height: 47px;
+  border-radius: 50%;
+  background: #e6f5eb;
+  color: #198754;
+  font-size: 27px;
+  font-weight: 700;
+}
+
+.gs-excel-dropzone > strong {
+  color: #263b2f;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.gs-excel-dropzone-or {
+  color: #829087;
+  font-size: 12px;
+}
+
+.gs-browse-files-button {
+  min-height: 38px;
+  padding: 9px 17px;
+  border: 1px solid #198754;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #126b42;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.gs-browse-files-button:hover:not(:disabled) {
+  background: #e9f7ee;
+}
+
+.gs-browse-files-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gs-import-modal .gs-hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.gs-excel-file-name {
+  display: block;
+  max-width: 100%;
+  color: #748278;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.gs-excel-dropzone.has-file .gs-excel-file-name {
+  color: #126b42;
+  font-weight: 650;
+}
+
+.gs-import-modal .gs-excel-file-hint {
+  display: block;
+  margin-top: 10px;
+  color: #748278;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.gs-import-submit-button {
+  width: auto;
+  min-width: 190px;
+  margin-top: 0;
+}
+
+.gs-import-modal .gs-template-button-single:focus-visible,
+.gs-import-modal .gs-browse-files-button:focus-visible {
+  outline: 3px solid rgba(25, 135, 84, 0.25);
+  outline-offset: 3px;
+}
+
+@media (max-width: 520px) {
+  .gs-template-button-single {
+    width: 100%;
+  }
+
+  .gs-excel-dropzone {
+    min-height: 190px;
+    padding: 18px 12px;
+  }
+
+  .gs-import-submit-button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+/* Keep the import popup within the screen without scrolling */
+.gs-import-modal {
+  width: min(570px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Prevent the popup content from creating a scrollbar */
+.gs-import-modal .gs-import-modal-content {
+  overflow-y: hidden;
+  box-sizing: border-box;
+}
+
+/* Keep the file drop area at a fixed height */
+.gs-excel-dropzone {
+  min-height: 250px;
+  box-sizing: border-box;
+}
+
+/* Smaller screens */
+@media (max-height: 700px) {
+  .gs-import-modal {
+    max-height: calc(100vh - 24px);
+  }
+
+  .gs-excel-dropzone {
+    min-height: 190px;
+  }
+}

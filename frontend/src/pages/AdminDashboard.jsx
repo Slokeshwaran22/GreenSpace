@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import FileManagement from "../components/FileManagement.jsx";
 import ProfileEditor from "../components/ProfileEditor.jsx";
 import "../styles/AdminDashboard.css";
 
 const API_URL = "http://localhost:8000";
+const MAX_EXCEL_FILE_SIZE = 5 * 1024 * 1024;
 
 export default function AdminDashboard() {
   const [dashboard, setDashboard] = useState(null);
@@ -17,6 +18,8 @@ export default function AdminDashboard() {
   const [importStatus, setImportStatus] = useState("");
   const [importError, setImportError] = useState(false);
   const [importSummary, setImportSummary] = useState(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Message form states
   const [recipientId, setRecipientId] = useState("all");
@@ -67,6 +70,66 @@ export default function AdminDashboard() {
     fetchSentMessages();
   }, []);
 
+  // Validate a selected Excel file
+  function validateExcelFile(file) {
+    if (!file) {
+      setExcelFile(null);
+      return false;
+    }
+
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      setExcelFile(null);
+      setImportError(true);
+      setImportStatus("Only .xlsx Excel files are supported.");
+      setImportSummary(null);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      return false;
+    }
+
+    if (file.size > MAX_EXCEL_FILE_SIZE) {
+      setExcelFile(null);
+      setImportError(true);
+      setImportStatus("The file must be 5 MB or smaller.");
+      setImportSummary(null);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      return false;
+    }
+
+    setExcelFile(file);
+    setImportStatus("");
+    setImportError(false);
+    setImportSummary(null);
+
+    return true;
+  }
+
+  // Handle file selection or drag-and-drop
+  function handleExcelFileChange(event) {
+    const file = event.target.files?.[0] || null;
+    validateExcelFile(file);
+  }
+
+  function handleFileDrop(event) {
+    event.preventDefault();
+    setIsDraggingFile(false);
+
+    if (importing) return;
+
+    const file = event.dataTransfer.files?.[0];
+
+    if (file) {
+      validateExcelFile(file);
+    }
+  }
+
   // Open Excel import popup
   function openImportModal() {
     setShowImportModal(true);
@@ -74,6 +137,7 @@ export default function AdminDashboard() {
     setImportStatus("");
     setImportError(false);
     setImportSummary(null);
+    setIsDraggingFile(false);
   }
 
   // Close popup and reset form
@@ -85,6 +149,11 @@ export default function AdminDashboard() {
     setImportStatus("");
     setImportError(false);
     setImportSummary(null);
+    setIsDraggingFile(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   }
 
   // Import users from Excel
@@ -105,7 +174,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    if (excelFile.size > 5 * 1024 * 1024) {
+    if (excelFile.size > MAX_EXCEL_FILE_SIZE) {
       setImportError(true);
       setImportStatus("The file must be 5 MB or smaller.");
       return;
@@ -219,10 +288,8 @@ export default function AdminDashboard() {
 
       setExcelFile(null);
 
-      const fileInput = document.getElementById("gs-excel-file");
-
-      if (fileInput) {
-        fileInput.value = "";
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
       }
     } catch (err) {
       setImportError(true);
@@ -521,7 +588,7 @@ export default function AdminDashboard() {
             >
               <div className="gs-import-modal-header">
                 <div className="gs-import-modal-title">
-                  <span className="gs-import-modal-icon">☁</span>
+                  <span className="gs-import-modal-icon">↑</span>
                   <h2 id="gs-import-title">
                     Import User Session
                   </h2>
@@ -540,44 +607,97 @@ export default function AdminDashboard() {
 
               <div className="gs-import-modal-body">
                 <p>
-                  Upload an Excel file (.xlsx) to import multiple
-                  users into GreenSpace.
+                  Upload an Excel file to import multiple users into
+                  GreenSpace.
                 </p>
 
                 <form onSubmit={handleExcelImport}>
-                  <div className="gs-form-group">
+                  {/* Single Download Template button */}
+                  <a
+                    className="gs-template-button gs-template-button-single"
+                    href="/GreenSpace_User_Import_Template.xlsx"
+                    download="GreenSpace_User_Import_Template.xlsx"
+                  >
+                    <span aria-hidden="true">↓</span>
+                    Download Template
+                  </a>
+
+                  {/* Excel file chooser */}
+                  <div className="gs-form-group gs-excel-upload-group">
                     <label htmlFor="gs-excel-file">
-                      Select Excel File (.xlsx) *
+                      Choose Excel File (.xlsx) *
                     </label>
 
-                    <input
-                      id="gs-excel-file"
-                      type="file"
-                      accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                      onChange={(event) => {
-                        setExcelFile(
-                          event.target.files?.[0] || null
-                        );
-                        setImportStatus("");
-                        setImportError(false);
-                        setImportSummary(null);
+                    <div
+                      className={`gs-excel-dropzone ${
+                        isDraggingFile ? "is-dragging" : ""
+                      } ${excelFile ? "has-file" : ""}`}
+                      onDragEnter={(event) => {
+                        event.preventDefault();
+                        if (!importing) setIsDraggingFile(true);
                       }}
-                      disabled={importing}
-                      required
-                    />
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        if (!importing) setIsDraggingFile(true);
+                      }}
+                      onDragLeave={(event) => {
+                        event.preventDefault();
 
-                    <small>
-                      Only .xlsx files are supported. Maximum size:
-                      5 MB.
+                        if (
+                          !event.currentTarget.contains(
+                            event.relatedTarget
+                          )
+                        ) {
+                          setIsDraggingFile(false);
+                        }
+                      }}
+                      onDrop={handleFileDrop}
+                    >
+                      <span
+                        className="gs-excel-upload-icon"
+                        aria-hidden="true"
+                      >
+                        ↑
+                      </span>
+
+                      <strong>
+                        Drag &amp; drop your Excel file here
+                      </strong>
+
+                      <span className="gs-excel-dropzone-or">
+                        or
+                      </span>
+
+                      <button
+                        type="button"
+                        className="gs-browse-files-button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={importing}
+                      >
+                        Browse Files
+                      </button>
+
+                      <input
+                        ref={fileInputRef}
+                        id="gs-excel-file"
+                        className="gs-hidden-file-input"
+                        type="file"
+                        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        onChange={handleExcelFileChange}
+                        disabled={importing}
+                        aria-label="Choose Excel file"
+                      />
+
+                      <small className="gs-excel-file-name">
+                        {excelFile
+                          ? excelFile.name
+                          : "No file chosen"}
+                      </small>
+                    </div>
+
+                    <small className="gs-excel-file-hint">
+                      .xlsx files only · Maximum size 5 MB
                     </small>
-                  </div>
-
-                  <div className="gs-import-info">
-                    <strong>ⓘ Excel file format</strong>
-                    <p>Use these column headers:</p>
-                    <code>
-                      username, email, phone, password
-                    </code>
                   </div>
 
                   {importStatus && (
@@ -625,12 +745,12 @@ export default function AdminDashboard() {
 
                     <button
                       type="submit"
-                      className="gs-import-button"
+                      className="gs-import-button gs-import-submit-button"
                       disabled={importing || !excelFile}
                     >
                       {importing
                         ? "Importing..."
-                        : "☁ Import Session"}
+                        : "↑ Upload & Import Users"}
                     </button>
                   </div>
                 </form>
