@@ -1,5 +1,6 @@
 from io import BytesIO
 from typing import Literal, Optional
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook, Workbook
@@ -326,13 +327,18 @@ def import_users_from_excel(
                 detail="The Excel file does not contain a header row.",
             )
 
+        # Accept headers with or without a trailing asterisk.
+        # Examples: username, username*, username *, email, email*.
         headers = [
-            str(value).strip().lower() if value is not None else ""
+            str(value).strip().lower().removesuffix("*").strip()
+            if value is not None else ""
             for value in header_row
         ]
 
-        # These columns must exist; phone and password cells may be blank.
-        required_headers = ["username", "email", "phone", "password"]
+        # Username and email are required columns.
+        # Phone and password columns are optional.
+        required_headers = ["username", "email"]
+        optional_headers = ["phone", "password"]
 
         missing_headers = [
             name for name in required_headers if name not in headers
@@ -341,12 +347,17 @@ def import_users_from_excel(
         if missing_headers:
             raise HTTPException(
                 status_code=400,
-                detail="Missing Excel columns: " + ", ".join(missing_headers),
+                detail=(
+                    "Missing required Excel columns: "
+                    + ", ".join(missing_headers)
+                ),
             )
 
         # Column order does not matter.
         column_index = {
-            name: headers.index(name) for name in required_headers
+            name: headers.index(name)
+            for name in required_headers + optional_headers
+            if name in headers
         }
 
         # 3. Prepare the result workbook.
@@ -382,8 +393,12 @@ def import_users_from_excel(
             total_rows += 1
 
             def cell_value(column_name):
-                index = column_index[column_name]
-                return row[index] if index < len(row) else None
+                index = column_index.get(column_name)
+
+                if index is None or index >= len(row):
+                    return None
+
+                return row[index]
 
             username_value = cell_value("username")
             email_value = cell_value("email")
@@ -464,7 +479,7 @@ def import_users_from_excel(
                 else:
                     password_hash = None
 
-                # Save only the password hash, never the plain-text password.
+                # Save only the password hash, never plain-text password.
                 cursor.execute(
                     """
                     INSERT INTO users (
@@ -576,4 +591,4 @@ def import_users_from_excel(
         if source_workbook:
             source_workbook.close()
 
-        file.file.close()
+        file.file.close()   
