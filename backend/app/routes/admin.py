@@ -328,7 +328,7 @@ def import_users_from_excel(
             )
 
         # Accept headers with or without a trailing asterisk.
-        # Examples: username, username*, username *, email, email*.
+        # Examples: username, username*, email, email*.
         headers = [
             str(value).strip().lower().removesuffix("*").strip()
             if value is not None else ""
