@@ -1,7 +1,10 @@
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import "./FileManagement.css";
+
+const ALLOWED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".xlsx"];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const EMPTY_FILTERS = {
   search: "",
@@ -29,6 +32,28 @@ function formatDate(value) {
     : date.toLocaleString();
 }
 
+function getExtension(filename) {
+  const index = filename.lastIndexOf(".");
+  return index === -1 ? "" : filename.slice(index).toLowerCase();
+}
+
+// Return an error message for an invalid file, or an empty string.
+function validateFile(file) {
+  if (!ALLOWED_EXTENSIONS.includes(getExtension(file.name))) {
+    return "Only PDF, PNG, JPG, JPEG and XLSX files can be uploaded.";
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    return `This file is ${formatSize(file.size)}. Choose a file of 10 MB or less.`;
+  }
+
+  if (file.size === 0) {
+    return "This file is empty. Choose another file.";
+  }
+
+  return "";
+}
+
 function openFile(url) {
   // Same-origin credentials are included by the browser when available.
   // The backend must authenticate the request using its session cookie.
@@ -40,6 +65,9 @@ export default function FileManagement() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [fileError, setFileError] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -94,27 +122,64 @@ export default function FileManagement() {
     await loadFiles(EMPTY_FILTERS);
   }
 
+  // Select a file from the picker or a drop, and check it straight away
+  function chooseFile(file) {
+    if (!file || uploading) return;
+
+    setSelectedFile(file);
+    setFileError(validateFile(file));
+    setError("");
+    setNotice("");
+  }
+
+  function clearSelectedFile() {
+    setSelectedFile(null);
+    setFileError("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function openFilePicker() {
+    if (fileInputRef.current) {
+      // Allow choosing the same file again after removing it
+      fileInputRef.current.value = "";
+      fileInputRef.current.click();
+    }
+  }
+
+  function handleDragOver(event) {
+    event.preventDefault();
+    if (!uploading) setIsDragging(true);
+  }
+
+  function handleDragLeave(event) {
+    event.preventDefault();
+
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+      setIsDragging(false);
+    }
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    setIsDragging(false);
+    chooseFile(event.dataTransfer.files?.[0]);
+  }
+
   async function handleUpload(event) {
     event.preventDefault();
 
     if (!selectedFile) {
-      setError("Please select a file to upload.");
+      setFileError("Choose a file to upload.");
       return;
     }
 
-    const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".xlsx"];
-    const filename = selectedFile.name.toLowerCase();
-    const allowed = allowedExtensions.some((extension) =>
-      filename.endsWith(extension)
-    );
+    const validationError = validateFile(selectedFile);
 
-    if (!allowed) {
-      setError("Allowed file types: PDF, PNG, JPG, JPEG and XLSX.");
-      return;
-    }
-
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setError("The maximum file size is 10 MB.");
+    if (validationError) {
+      setFileError(validationError);
       return;
     }
 
@@ -125,8 +190,7 @@ export default function FileManagement() {
     try {
       const result = await api.uploadFile(selectedFile);
 
-      setSelectedFile(null);
-      event.target.reset();
+      clearSelectedFile();
 
       setNotice(result.message || "File uploaded successfully.");
       await loadFiles(filters);
@@ -204,31 +268,129 @@ export default function FileManagement() {
         <div className="fm-card-heading">
           <div>
             <h3>Upload a file</h3>
-            <p>PDF, PNG, JPG, JPEG or XLSX · Maximum 10 MB</p>
+            <p>Share a document or image with your team.</p>
           </div>
-          <span className="fm-upload-icon">↑</span>
         </div>
 
         <form className="fm-upload-form" onSubmit={handleUpload}>
           <input
+            ref={fileInputRef}
+            id="fm-file-input"
+            className="fm-hidden-input"
             aria-label="Choose a file"
             type="file"
-            accept=".pdf,.png,.jpg,.jpeg,.xlsx"
-            onChange={(event) =>
-              setSelectedFile(event.target.files?.[0] || null)
-            }
+            accept={ALLOWED_EXTENSIONS.join(",")}
+            onChange={(event) => chooseFile(event.target.files?.[0])}
             disabled={uploading}
+            tabIndex={-1}
           />
 
-          {selectedFile && (
-            <p className="fm-selected-file">
-              Selected: {selectedFile.name} ({formatSize(selectedFile.size)})
-            </p>
+          {!selectedFile ? (
+            <div
+              className={`fm-dropzone ${isDragging ? "is-dragging" : ""}`}
+              onDragEnter={handleDragOver}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <span className="fm-drop-icon" aria-hidden="true">
+                {isDragging ? "↓" : "↑"}
+              </span>
+
+              <div className="fm-drop-text">
+                <strong>
+                  {isDragging
+                    ? "Drop to add this file"
+                    : "Drag and drop a file here"}
+                </strong>
+
+                {isDragging ? (
+                  <span className="fm-drop-hint">
+                    Release the mouse button to select it
+                  </span>
+                ) : (
+                  <div className="fm-type-chips">
+                    {ALLOWED_EXTENSIONS.map((extension) => (
+                      <span className="fm-type" key={extension}>
+                        {extension.slice(1).toUpperCase()}
+                      </span>
+                    ))}
+                    <span className="fm-drop-hint">Max 10 MB</span>
+                  </div>
+                )}
+              </div>
+
+              {!isDragging && (
+                <button
+                  type="button"
+                  className="fm-browse-button"
+                  onClick={openFilePicker}
+                  disabled={uploading}
+                >
+                  Browse files
+                </button>
+              )}
+            </div>
+          ) : (
+            <div
+              className={`fm-chosen-file ${fileError ? "has-error" : ""}`}
+            >
+              <span className="fm-chosen-type">
+                {getExtension(selectedFile.name).slice(1).toUpperCase() ||
+                  "FILE"}
+              </span>
+
+              <div className="fm-chosen-meta">
+                <strong>{selectedFile.name}</strong>
+                <span>
+                  {formatSize(selectedFile.size)} ·{" "}
+                  {uploading
+                    ? "uploading..."
+                    : fileError
+                      ? "cannot be uploaded"
+                      : "ready to upload"}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="fm-remove-button"
+                onClick={clearSelectedFile}
+                disabled={uploading}
+                aria-label="Remove file"
+                title="Remove file"
+              >
+                ×
+              </button>
+            </div>
           )}
 
-          <button className="fm-button fm-button-primary" disabled={uploading}>
-            {uploading ? "Uploading..." : "Upload File"}
-          </button>
+          {fileError && (
+            <div className="fm-alert fm-alert-error" role="alert">
+              {fileError}
+            </div>
+          )}
+
+          {selectedFile && (
+            <div className="fm-upload-actions">
+              <button
+                type="button"
+                className="fm-change-button"
+                onClick={openFilePicker}
+                disabled={uploading}
+              >
+                Choose a different file
+              </button>
+
+              <button
+                type="submit"
+                className="fm-button fm-button-primary"
+                disabled={uploading || Boolean(fileError)}
+              >
+                {uploading ? "Uploading..." : "↑ Upload file"}
+              </button>
+            </div>
+          )}
         </form>
       </section>
 
@@ -260,9 +422,6 @@ export default function FileManagement() {
               placeholder="Name or email..."
             />
           </label>
-
-          
-            
 
           <div className="fm-filter-actions">
             <button className="fm-button fm-button-primary" type="submit">

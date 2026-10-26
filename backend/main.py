@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 BACKEND_DIR = Path(__file__).resolve().parent
 load_dotenv(BACKEND_DIR / ".env")
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from mysql.connector import Error
 
@@ -35,6 +35,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Log every request and its response status
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"Request: {request.method} {request.url.path}")
+
+    response = await call_next(request)
+
+    print(f"Response status: {response.status_code}")
+    return response
 
 
 @app.get("/")

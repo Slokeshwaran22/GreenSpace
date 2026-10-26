@@ -422,10 +422,6 @@ export default function AdminDashboard() {
             📩 Sent Messages
           </a>
 
-          <a className="gs-nav-link" href="#activities">
-            ◷ Activities
-          </a>
-
           <a className="gs-nav-link" href="#file-management">
             📁 File Management
           </a>
@@ -930,22 +926,6 @@ export default function AdminDashboard() {
               ))}
             </div>
           )}
-        </section>
-
-        {/* Recent activities */}
-        <section className="gs-panel" id="activities">
-          <div className="gs-panel-header">
-            <div>
-              <h2>Recent Activities</h2>
-              <p>User activity history</p>
-            </div>
-          </div>
-
-          <p className="gs-empty">
-            Activity history is not connected yet. Login/logout
-            events need to be recorded by the backend before they
-            can appear here.
-          </p>
         </section>
 
         {/* File Management */}

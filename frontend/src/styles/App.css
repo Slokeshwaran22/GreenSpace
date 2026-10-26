@@ -674,7 +674,7 @@ body {
    SHORT DESKTOP SCREENS
 ========================================= */
 
-@media (min-width: 761px) and (max-height: 800px) {
+@media (min-width: 901px) and (max-height: 800px) {
   .image-panel {
     padding: 24px;
   }
@@ -714,10 +714,29 @@ body {
 }
 
 /* =========================================
+   LARGE DESKTOP SCREENS
+========================================= */
+
+@media (min-width: 1600px) {
+  .auth-page .form-panel .auth-card {
+    max-width: 520px;
+    padding: 40px 44px;
+  }
+
+  .auth-card h2 {
+    font-size: 2.2rem;
+  }
+
+  .auth-card {
+    font-size: 1.1rem;
+  }
+}
+
+/* =========================================
    TABLETS AND MOBILE
 ========================================= */
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .auth-page {
     height: auto;
     min-height: 100vh;
@@ -748,7 +767,8 @@ body {
     height: auto;
     min-height: 520px;
     padding: 24px 16px;
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: visible;
   }
 
   .auth-card {
@@ -768,6 +788,16 @@ body {
 /* =========================================
    VERY SMALL MOBILE SCREENS
 ========================================= */
+
+@media (max-width: 480px) {
+  .image-panel {
+    min-height: 160px;
+  }
+
+  .image-overlay p {
+    margin: 0;
+  }
+}
 
 @media (max-width: 380px) {
   .image-panel {
@@ -853,7 +883,6 @@ body {
       transparent 40%
     ),
     linear-gradient(135deg, #f7fbf2, #e3f1df, #f2f8eb);
-  overflow: hidden;
 }
 
 /* ===== Glass Effect on Register Card ===== */
@@ -932,7 +961,7 @@ body {
 
 /* ===== Responsive Card ===== */
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .form-panel .auth-card {
     max-width: 440px;
     padding: 26px 22px;
